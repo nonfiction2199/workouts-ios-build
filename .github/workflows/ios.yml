@@ -1,0 +1,101 @@
+name: Build iPhone IPA
+on:
+  workflow_dispatch:
+    inputs:
+      capture_previews:
+        description: 'Capture additional simulator screenshot galleries'
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - 'Workouts-*-source.zip'
+      - '.github/workflows/ios.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'Workouts-*-source.zip'
+      - '.github/workflows/ios.yml'
+concurrency:
+  group: iphone-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  iphone:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble native source and bundled media
+        run: |
+          unzip -q Workouts-1.4.0-source.zip
+          python3 Workouts-iOS/Scripts/build-branded-catalog.py
+          VERSION="$(cat Workouts-iOS/VERSION)"
+          zip -qr "Workouts-$VERSION-source.zip" Workouts-iOS -x "Workouts-iOS/Workouts/Resources/branded-foods.sqlite"
+      - name: Check theme contrast
+        run: python3 Workouts-iOS/Scripts/check-theme-contrast.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Native-Source
+          path: Workouts-*-source.zip
+          retention-days: 30
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Workouts-iOS/package-lock.json
+      - name: Test and bundle workout engine
+        working-directory: Workouts-iOS
+        run: |
+          npm ci
+          npm test
+          npm run build:engine
+      - name: Verify nutrition foundation
+        working-directory: Workouts-iOS
+        run: bash Scripts/test-nutrition.sh
+      - name: Install XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null; then brew install xcodegen; fi
+      - name: Compile and package IPA
+        working-directory: Workouts-iOS
+        run: bash Scripts/build-ipa.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Workouts-Signulous
+          path: |
+            Workouts-iOS/build/Workouts-*.ipa
+            Workouts-iOS/build/Workouts-*.sha256
+          if-no-files-found: error
+          retention-days: 30
+      - name: Exercise native nutrition logging
+        working-directory: Workouts-iOS
+        run: bash Scripts/test-nutrition-ui.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Build-log
+          path: Workouts-iOS/build/*.log
+          retention-days: 14
+      - name: Launch native simulator screens
+        id: previews
+        if: ${{ success() && github.event_name == 'workflow_dispatch' && inputs.capture_previews }}
+        working-directory: Workouts-iOS
+        run: bash Scripts/smoke-ios.sh
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && steps.previews.outcome != 'skipped' && steps.previews.outcome != '' }}
+        with:
+          name: Native-Previews
+          path: Workouts-iOS/build/previews/
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && steps.previews.outcome != 'skipped' && steps.previews.outcome != '' }}
+        with:
+          name: Theme-Previews
+          path: Workouts-iOS/build/theme-previews/
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && steps.previews.outcome != 'skipped' && steps.previews.outcome != '' }}
+        with:
+          name: Nutrition-Previews
+          path: Workouts-iOS/build/nutrition-previews/
+          retention-days: 14
