@@ -83,6 +83,16 @@ jobs:
           name: Build-log
           path: Workouts-iOS/build/*.log
           retention-days: 14
+      - name: Capture AI plate previews across eight themes
+        if: success()
+        working-directory: Workouts-iOS
+        run: bash Scripts/capture-ai-plates.sh
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: AI-Plate-Previews
+          path: Workouts-iOS/build/ai-plate-previews/
+          retention-days: 14
       - name: Launch native simulator screens
         id: previews
         if: ${{ success() && github.event_name == 'workflow_dispatch' && inputs.capture_previews }}
