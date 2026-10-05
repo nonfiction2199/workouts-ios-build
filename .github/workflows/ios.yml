@@ -9,7 +9,7 @@ on:
       ui_tests:
         description: 'Native UI checks'
         type: choice
-        options: [all, photo-library-recheck, restaurant-recheck, depth-recheck]
+        options: [all, photo-library-recheck, restaurant-recheck, depth-recheck, logging-recheck]
         default: all
   pull_request:
     paths:
@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Assemble native source and bundled media
         run: |
-          unzip -q Workouts-1.6.0-r4-source.zip
+          unzip -q Workouts-1.6.0-r5-source.zip
           python3 Workouts-iOS/Scripts/build-branded-catalog.py
           VERSION="$(cat Workouts-iOS/VERSION)"
           zip -qr "Workouts-$VERSION-source.zip" Workouts-iOS -x "Workouts-iOS/Workouts/Resources/branded-foods.sqlite"
