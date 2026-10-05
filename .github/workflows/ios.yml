@@ -7,9 +7,9 @@ on:
         type: boolean
         default: false
       ui_tests:
-        description: 'UI checks (recheck only the previously failed photo-library flow)'
+        description: 'Native UI checks'
         type: choice
-        options: [all, photo-library-recheck]
+        options: [all, photo-library-recheck, restaurant-recheck]
         default: all
   pull_request:
     paths:
