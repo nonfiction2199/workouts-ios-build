@@ -9,7 +9,7 @@ on:
       ui_tests:
         description: 'Native UI checks'
         type: choice
-        options: [all, photo-library-recheck, restaurant-recheck, depth-recheck, logging-recheck]
+        options: [all, photo-library-recheck, restaurant-recheck, depth-recheck, logging-recheck, update-recheck]
         default: all
   pull_request:
     paths:
@@ -28,12 +28,12 @@ permissions:
 jobs:
   iphone:
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - name: Assemble native source and bundled media
         run: |
-          unzip -q Workouts-1.6.0-r6-source.zip
+          unzip -q Workouts-1.7.0-r1-source.zip
           python3 Workouts-iOS/Scripts/build-branded-catalog.py
           VERSION="$(cat Workouts-iOS/VERSION)"
           zip -qr "Workouts-$VERSION-source.zip" Workouts-iOS -x "Workouts-iOS/Workouts/Resources/branded-foods.sqlite"
@@ -42,7 +42,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Native-Source
-          path: Workouts-1.6.0-source.zip
+          path: Workouts-1.7.0-source.zip
           retention-days: 30
       - uses: actions/setup-node@v4
         with:
@@ -83,15 +83,15 @@ jobs:
           name: Build-log
           path: Workouts-iOS/build/*.log
           retention-days: 14
-      - name: Capture AI plate previews across eight themes
+      - name: Capture logging, Levels and eight theme previews
         if: success()
         working-directory: Workouts-iOS
-        run: bash Scripts/capture-ai-plates.sh
+        run: bash Scripts/capture-update-previews.sh
       - uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: AI-Plate-Previews
-          path: Workouts-iOS/build/ai-plate-previews/
+          name: Update-Previews
+          path: Workouts-iOS/build/update-previews/
           retention-days: 14
       - name: Launch native simulator screens
         id: previews
